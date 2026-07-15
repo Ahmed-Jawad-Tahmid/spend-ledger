@@ -46,6 +46,11 @@ def init_db():
                    category TEXT NOT NULL
                )"""
         )
+        cols = [r[1] for r in con.execute("PRAGMA table_info(expenses)")]
+        if "currency" not in cols:
+            con.execute(
+                "ALTER TABLE expenses ADD COLUMN currency TEXT NOT NULL DEFAULT 'CAD'"
+            )
         if SEED and con.execute("SELECT COUNT(*) FROM expenses").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO expenses (date, details, amount, category) VALUES (?,?,?,?)",
@@ -70,18 +75,22 @@ def archive_completed_months():
             if m >= current:
                 continue  # only completed months
             rows = con.execute(
-                "SELECT date, details, amount, category FROM expenses "
+                "SELECT date, details, amount, category, currency FROM expenses "
                 "WHERE substr(date,1,7)=? ORDER BY date, id",
                 (m,),
             ).fetchall()
             out = ARCHIVE_DIR / f"{m}.csv"
             with out.open("w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                w.writerow(["Date", "Details", "Amount", "Category"])
+                w.writerow(["Date", "Details", "Amount", "Currency", "Category"])
                 for r in rows:
-                    w.writerow([r["date"], r["details"], f"{r['amount']:.2f}", r["category"]])
+                    w.writerow([r["date"], r["details"], f"{r['amount']:.2f}", r["currency"], r["category"]])
                 w.writerow([])
-                w.writerow(["", "Total", f"{sum(r['amount'] for r in rows):.2f}", ""])
+                totals = {}
+                for r in rows:
+                    totals[r["currency"]] = totals.get(r["currency"], 0) + r["amount"]
+                for cur_code, tot in sorted(totals.items()):
+                    w.writerow(["", f"Total ({cur_code})", f"{tot:.2f}", cur_code, ""])
             written.append(out.name)
         if written:
             print(f"Archived: {', '.join(written)}  ->  {ARCHIVE_DIR}/")
@@ -132,17 +141,19 @@ class Handler(BaseHTTPRequestHandler):
                     round(float(b["amount"]), 2),
                     str(b["category"]),
                 )
+                cur_code = str(b.get("currency", "CAD")).upper()
                 date.fromisoformat(d)  # validates format
                 assert det and amt > 0
+                assert len(cur_code) == 3 and cur_code.isalpha()
             except Exception:
                 self.send(400, {"error": "invalid expense: need date (YYYY-MM-DD), details, amount > 0, category"})
                 return
             with get_db() as con:
                 cur = con.execute(
-                    "INSERT INTO expenses (date, details, amount, category) VALUES (?,?,?,?)",
-                    (d, det, amt, cat),
+                    "INSERT INTO expenses (date, details, amount, category, currency) VALUES (?,?,?,?,?)",
+                    (d, det, amt, cat, cur_code),
                 )
-            self.send(201, {"id": cur.lastrowid, "date": d, "details": det, "amount": amt, "category": cat})
+            self.send(201, {"id": cur.lastrowid, "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code})
         elif self.path == "/api/archive":
             self.send(200, {"written": archive_completed_months()})
         else:

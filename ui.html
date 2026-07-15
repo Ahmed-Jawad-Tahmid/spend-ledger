@@ -70,6 +70,7 @@
   .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
   svg .slice{cursor:pointer;transition:opacity .15s}
   #themeBtn{border:1px solid var(--line2);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12px;font-family:var(--mono);cursor:pointer;letter-spacing:1px}
+  #curSelect{width:auto;border-radius:999px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--muted);background:var(--surface);border:1px solid var(--line2);cursor:pointer}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 </style>
 </head>
@@ -81,7 +82,10 @@
       <select id="monthSelect" aria-label="Select month"></select>
     </div>
     <div class="headRight">
-      <button id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">DARK</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="curSelect" aria-label="Currency"></select>
+        <button id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">DARK</button>
+      </div>
       <div>
         <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
         <div id="total" style="text-align:right">$0.00</div>
@@ -128,12 +132,16 @@ const CATEGORIES = [
 ];
 const catColor = n => (CATEGORIES.find(c=>c[0]===n)||CATEGORIES[CATEGORIES.length-1])[1];
 
+const CURRENCIES = ['CAD','USD','EUR','GBP','JPY','CNY','INR','AUD','CHF','SGD','AED','SAR','BDT'];
+
 let expenses = [];
 let month = todayISO().slice(0,7);
 let filterCat = null;
+let curCode = localStorage.getItem('currency') || 'CAD';
+if(!CURRENCIES.includes(curCode)) curCode = 'CAD';
 
 function todayISO(){const d=new Date(),p=x=>String(x).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-const fmt = n => n.toLocaleString('en-CA',{style:'currency',currency:'CAD'});
+const fmt = (n,c) => n.toLocaleString('en-CA',{style:'currency',currency:c||curCode});
 const monthLabel = k => {const [y,m]=k.split('-');return new Date(+y,+m-1,1).toLocaleDateString('en-CA',{month:'long',year:'numeric'});};
 const dayLabel = iso => {const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});};
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -160,7 +168,8 @@ async function addExpense(){
     date: $('fDate').value,
     details: $('fDetails').value.trim(),
     amount: parseFloat($('fAmount').value),
-    category: $('fCategory').value
+    category: $('fCategory').value,
+    currency: curCode
   };
   try{
     await api('/api/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -184,9 +193,11 @@ function render(){
   $('monthSelect').innerHTML=months.map(m=>`<option value="${m}"${m===month?' selected':''}>${monthLabel(m)}</option>`).join('');
 
   const mExp=expenses.filter(e=>e.date.slice(0,7)===month);
-  const total=mExp.reduce((s,e)=>s+e.amount,0);
+  const curExp=mExp.filter(e=>(e.currency||'CAD')===curCode);
+  const total=curExp.reduce((s,e)=>s+e.amount,0);
   $('total').textContent=fmt(total);
-  setStatus(mExp.length+' entries · saved to expenses.db', false);
+  const otherCur=mExp.length-curExp.length;
+  setStatus(mExp.length+' entries'+(otherCur?` (${otherCur} in other currencies)`:'')+' · saved to expenses.db', false);
 
   const pill=$('filterPill');
   if(filterCat){
@@ -202,13 +213,15 @@ function render(){
     html=`<div class="empty">No expenses logged ${filterCat?'for '+esc(filterCat):'this month'} yet. Add one above.</div>`;
   }
   for(const [date,items] of byDay){
-    const sub=items.reduce((s,e)=>s+e.amount,0);
-    html+=`<div style="margin-bottom:18px"><div class="dayHead"><span>${dayLabel(date)}</span><span class="mono">${fmt(sub)}</span></div>`;
+    const subs={};
+    items.forEach(e=>{const c=e.currency||'CAD';subs[c]=(subs[c]||0)+e.amount;});
+    const subTxt=Object.entries(subs).map(([c,v])=>fmt(v,c)).join(' + ');
+    html+=`<div style="margin-bottom:18px"><div class="dayHead"><span>${dayLabel(date)}</span><span class="mono">${subTxt}</span></div>`;
     for(const e of items){
       html+=`<div class="row">
         <button class="dot" style="background:${catColor(e.category)}" data-filter="${esc(e.category)}" title="Filter by ${esc(e.category)}" aria-label="Filter by ${esc(e.category)}"></button>
         <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}</small></div>
-        <div class="amt">${fmt(e.amount)}</div>
+        <div class="amt">${fmt(e.amount,e.currency||'CAD')}</div>
         <button class="del" data-del="${e.id}" title="Delete" aria-label="Delete ${esc(e.details)}">✕</button>
       </div>`;
     }
@@ -217,7 +230,7 @@ function render(){
   $('ledger').innerHTML=html;
 
   const map={};
-  mExp.forEach(e=>map[e.category]=(map[e.category]||0)+e.amount);
+  curExp.forEach(e=>map[e.category]=(map[e.category]||0)+e.amount);
   const cats=Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   renderChart(cats,total);
   renderBreakdown(cats,total);
@@ -292,6 +305,14 @@ $('themeBtn').addEventListener('click',()=>{
   const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
   localStorage.setItem('theme',next);
   applyTheme(next);
+});
+
+// ---------- currency ----------
+$('curSelect').innerHTML=CURRENCIES.map(c=>`<option${c===curCode?' selected':''}>${c}</option>`).join('');
+$('curSelect').addEventListener('change',ev=>{
+  curCode=ev.target.value;
+  localStorage.setItem('currency',curCode);
+  render();
 });
 
 // ---------- init ----------
