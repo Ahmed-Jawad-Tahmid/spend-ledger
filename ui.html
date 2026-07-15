@@ -9,7 +9,18 @@
     --bg:#EEF2EE; --surface:#FFFFFF; --paper:#FBFCFA;
     --ink:#1B2A24; --muted:#5E6B63; --faint:#8A948C;
     --line:#D8E0D8; --line2:#C9D4C9; --accent:#1F6E4E; --danger:#B04A2E;
+    --strong:#16281F; --rowline:#E2E8E2; --muted2:#7A857D;
+    --del:#B9C2BB; --hint:#9AA49C; --shadow:rgba(27,42,36,.06);
     --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    color-scheme:light;
+  }
+  html[data-theme="dark"]{
+    --bg:#111815; --surface:#1A211D; --paper:#161D19;
+    --ink:#E3EAE4; --muted:#9CA9A0; --faint:#79867E;
+    --line:#2A342E; --line2:#37433C; --accent:#3FA97C; --danger:#D66A4A;
+    --strong:#F0F5F1; --rowline:#242E28; --muted2:#8B978E;
+    --del:#4E5A52; --hint:#5E6B63; --shadow:rgba(0,0,0,.3);
+    color-scheme:dark;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -20,7 +31,7 @@
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}
   header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
   #monthSelect{font-size:26px;font-weight:700;border:none;background:transparent;color:var(--ink);padding:0;font-family:inherit}
-  #total{font-family:var(--mono);font-size:34px;font-weight:700;color:#16281F}
+  #total{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--strong)}
   #status{font-family:var(--mono);font-size:11px;color:var(--faint);min-height:14px;text-align:right}
   #status.err{color:var(--danger)}
   .addCard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:22px}
@@ -35,28 +46,30 @@
   .cols{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;align-items:start}
   @media (max-width:760px){.cols{grid-template-columns:1fr}}
   .dayHead{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:6px}
-  .row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid #E2E8E2;border-radius:8px;padding:9px 12px;margin-bottom:6px}
+  .row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--rowline);border-radius:8px;padding:9px 12px;margin-bottom:6px}
   .row .det{flex:1;min-width:0}
   .row .det b{font-weight:500;display:block}
-  .row .det small{font-size:12px;color:#7A857D}
+  .row .det small{font-size:12px;color:var(--muted2)}
   .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:none;padding:0;cursor:pointer}
   .amt{font-family:var(--mono);font-weight:600}
-  .del{border:none;background:transparent;color:#B9C2BB;font-size:13px;cursor:pointer;padding:2px 4px}
+  .del{border:none;background:transparent;color:var(--del);font-size:13px;cursor:pointer;padding:2px 4px}
   .del:hover{color:var(--danger)}
-  .empty{border:1.5px dashed var(--line2);border-radius:10px;padding:28px;text-align:center;color:#7A857D;font-size:14px}
+  .empty{border:1.5px dashed var(--line2);border-radius:10px;padding:28px;text-align:center;color:var(--muted2);font-size:14px}
   .filterPill{display:none;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;margin-bottom:12px;font-family:inherit;color:var(--ink);cursor:pointer}
   .filterPill.on{display:inline-flex}
-  .receipt{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px 20px;box-shadow:0 2px 10px rgba(27,42,36,.06)}
+  .receipt{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px 20px;box-shadow:0 2px 10px var(--shadow)}
   .tear{border-top:2px dashed var(--line2);margin:14px -16px 12px}
   .rrow{display:flex;justify-content:space-between;gap:12px;width:100%;padding:5px 0;border:none;background:transparent;font-family:var(--mono);font-size:13px;color:var(--ink);text-align:left;cursor:pointer;font-variant-numeric:tabular-nums}
   .rrow .nm{display:flex;align-items:center;gap:8px;min-width:0}
   .rrow .nm i{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rrow.total{border-top:1.5px solid var(--ink);margin-top:6px;padding-top:8px;font-weight:700;cursor:default}
   .pct{color:var(--faint)}
-  .hint{font-family:var(--mono);font-size:10px;color:#9AA49C;text-align:center;margin-top:14px;letter-spacing:1px}
+  .hint{font-family:var(--mono);font-size:10px;color:var(--hint);text-align:center;margin-top:14px;letter-spacing:1px}
   .toolRow{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
   .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
   svg .slice{cursor:pointer;transition:opacity .15s}
+  #themeBtn{border:1px solid var(--line2);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12px;font-family:var(--mono);cursor:pointer;letter-spacing:1px}
+  .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 </style>
 </head>
 <body>
@@ -66,10 +79,13 @@
       <div class="eyebrow">PERSONAL LEDGER</div>
       <select id="monthSelect" aria-label="Select month"></select>
     </div>
-    <div>
-      <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
-      <div id="total">$0.00</div>
-      <div id="status"></div>
+    <div class="headRight">
+      <button id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">DARK</button>
+      <div>
+        <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
+        <div id="total" style="text-align:right">$0.00</div>
+        <div id="status"></div>
+      </div>
     </div>
   </header>
 
@@ -206,7 +222,7 @@ function render(){
 
 function renderChart(cats,total){
   const box=$('chart');
-  if(!cats.length){box.innerHTML='<span style="color:#7A857D;font-size:14px">Nothing to chart yet.</span>';return;}
+  if(!cats.length){box.innerHTML='<span style="color:var(--muted2);font-size:14px">Nothing to chart yet.</span>';return;}
   const cx=105,cy=105,R=88,r=54;
   let a0=-Math.PI/2, paths='';
   for(const c of cats){
@@ -216,13 +232,13 @@ function renderChart(cats,total){
     const [x0,y0]=p(a0,R),[x1,y1]=p(a1,R),[x2,y2]=p(a1,r),[x3,y3]=p(a0,r);
     const dim=filterCat&&filterCat!==c.name?0.3:1;
     paths+=`<path class="slice" d="M${x0},${y0} A${R},${R} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 ${large} 0 ${x3},${y3} Z"
-      fill="${catColor(c.name)}" opacity="${dim}" stroke="#FBFCFA" stroke-width="2"
+      fill="${catColor(c.name)}" opacity="${dim}" style="stroke:var(--paper)" stroke-width="2"
       data-filter="${esc(c.name)}"><title>${esc(c.name)}: ${fmt(c.value)} (${Math.round(frac*100)}%)</title></path>`;
     a0=a1;
   }
   box.innerHTML=`<svg viewBox="0 0 210 210" width="210" height="210" role="img" aria-label="Spending by category">${paths}
-    <text x="105" y="100" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#8A948C" letter-spacing="1">TOTAL</text>
-    <text x="105" y="120" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" fill="#16281F">${fmt(total)}</text></svg>`;
+    <text x="105" y="100" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" style="fill:var(--faint)" letter-spacing="1">TOTAL</text>
+    <text x="105" y="120" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" style="fill:var(--strong)">${fmt(total)}</text></svg>`;
 }
 
 function renderBreakdown(cats,total){
@@ -259,6 +275,20 @@ $('archiveBtn').addEventListener('click',async()=>{
     const res=await api('/api/archive',{method:'POST'});
     setStatus(res.written.length?('archived: '+res.written.join(', ')):'no completed months to archive yet',false);
   }catch(e){ setStatus(e.message,true); }
+});
+
+// ---------- theme ----------
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  $('themeBtn').textContent=t==='dark'?'LIGHT':'DARK';
+}
+const savedTheme=localStorage.getItem('theme')
+  || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+applyTheme(savedTheme);
+$('themeBtn').addEventListener('click',()=>{
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  localStorage.setItem('theme',next);
+  applyTheme(next);
 });
 
 // ---------- init ----------
