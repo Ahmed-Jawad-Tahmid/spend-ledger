@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expense Tracker</title>
+<style>
+  :root{
+    --bg:#EEF2EE; --surface:#FFFFFF; --paper:#FBFCFA;
+    --ink:#1B2A24; --muted:#5E6B63; --faint:#8A948C;
+    --line:#D8E0D8; --line2:#C9D4C9; --accent:#1F6E4E; --danger:#B04A2E;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Avenir Next','Segoe UI',system-ui,-apple-system,sans-serif;
+    padding:28px 20px 64px;}
+  .wrap{max-width:1060px;margin:0 auto}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  #monthSelect{font-size:26px;font-weight:700;border:none;background:transparent;color:var(--ink);padding:0;font-family:inherit}
+  #total{font-family:var(--mono);font-size:34px;font-weight:700;color:#16281F}
+  #status{font-family:var(--mono);font-size:11px;color:var(--faint);min-height:14px;text-align:right}
+  #status.err{color:var(--danger)}
+  .addCard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:22px}
+  .addGrid{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px}
+  .field.grow{flex:2}
+  label span{font-size:11px;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
+  input,select{border:1px solid var(--line2);border-radius:6px;padding:9px 10px;font-size:14px;background:var(--paper);color:var(--ink);font-family:inherit;width:100%}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  #addBtn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:10px 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  #addBtn:disabled{opacity:.45;cursor:default}
+  .cols{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;align-items:start}
+  @media (max-width:760px){.cols{grid-template-columns:1fr}}
+  .dayHead{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:6px}
+  .row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid #E2E8E2;border-radius:8px;padding:9px 12px;margin-bottom:6px}
+  .row .det{flex:1;min-width:0}
+  .row .det b{font-weight:500;display:block}
+  .row .det small{font-size:12px;color:#7A857D}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:none;padding:0;cursor:pointer}
+  .amt{font-family:var(--mono);font-weight:600}
+  .del{border:none;background:transparent;color:#B9C2BB;font-size:13px;cursor:pointer;padding:2px 4px}
+  .del:hover{color:var(--danger)}
+  .empty{border:1.5px dashed var(--line2);border-radius:10px;padding:28px;text-align:center;color:#7A857D;font-size:14px}
+  .filterPill{display:none;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;margin-bottom:12px;font-family:inherit;color:var(--ink);cursor:pointer}
+  .filterPill.on{display:inline-flex}
+  .receipt{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px 20px;box-shadow:0 2px 10px rgba(27,42,36,.06)}
+  .tear{border-top:2px dashed var(--line2);margin:14px -16px 12px}
+  .rrow{display:flex;justify-content:space-between;gap:12px;width:100%;padding:5px 0;border:none;background:transparent;font-family:var(--mono);font-size:13px;color:var(--ink);text-align:left;cursor:pointer;font-variant-numeric:tabular-nums}
+  .rrow .nm{display:flex;align-items:center;gap:8px;min-width:0}
+  .rrow .nm i{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rrow.total{border-top:1.5px solid var(--ink);margin-top:6px;padding-top:8px;font-weight:700;cursor:default}
+  .pct{color:var(--faint)}
+  .hint{font-family:var(--mono);font-size:10px;color:#9AA49C;text-align:center;margin-top:14px;letter-spacing:1px}
+  .toolRow{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
+  svg .slice{cursor:pointer;transition:opacity .15s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">PERSONAL LEDGER</div>
+      <select id="monthSelect" aria-label="Select month"></select>
+    </div>
+    <div>
+      <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
+      <div id="total">$0.00</div>
+      <div id="status"></div>
+    </div>
+  </header>
+
+  <section class="addCard">
+    <div class="addGrid">
+      <label class="field"><span>Date</span><input type="date" id="fDate"></label>
+      <label class="field grow"><span>Details</span><input type="text" id="fDetails" placeholder="Good Earth iced coffee"></label>
+      <label class="field"><span>Amount</span><input type="number" id="fAmount" min="0" step="0.01" placeholder="3.94" class="mono"></label>
+      <label class="field"><span>Category</span><select id="fCategory"></select></label>
+      <button id="addBtn" disabled>Add expense</button>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section>
+      <button id="filterPill" class="filterPill"></button>
+      <div id="ledger"></div>
+    </section>
+    <aside class="receipt">
+      <div id="chart" style="height:210px;display:flex;align-items:center;justify-content:center"></div>
+      <div class="tear"></div>
+      <div id="breakdown"></div>
+      <div class="hint">* TAP A SLICE OR LINE TO FILTER *</div>
+      <div class="toolRow">
+        <button id="archiveBtn" title="Write CSVs for completed months into archives/">Archive past months</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+'use strict';
+const CATEGORIES = [
+  ['Rent','#1F6E4E'],['Grocery','#2E8B6A'],['Lunch','#E0A526'],['Coffee','#8C5A2B'],
+  ['Phone','#3E6B8E'],['Gas','#6B4E8E'],['Snacks & Drinks','#C96A3B'],
+  ['Home Supplies','#5E7350'],['Personal Care','#B04A6E'],['Other','#7A7F7A']
+];
+const catColor = n => (CATEGORIES.find(c=>c[0]===n)||CATEGORIES[CATEGORIES.length-1])[1];
+
+let expenses = [];
+let month = todayISO().slice(0,7);
+let filterCat = null;
+
+function todayISO(){const d=new Date(),p=x=>String(x).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+const fmt = n => n.toLocaleString('en-CA',{style:'currency',currency:'CAD'});
+const monthLabel = k => {const [y,m]=k.split('-');return new Date(+y,+m-1,1).toLocaleDateString('en-CA',{month:'long',year:'numeric'});};
+const dayLabel = iso => {const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+function setStatus(msg,err){const el=$('status');el.textContent=msg;el.className=err?'err':'';}
+
+// ---------- api ----------
+async function api(path, opts){
+  const res = await fetch(path, opts);
+  if(!res.ok){
+    let msg = 'request failed';
+    try{ msg = (await res.json()).error || msg; }catch(e){}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+async function load(){
+  try{ expenses = await api('/api/expenses'); render(); }
+  catch(e){ setStatus('cannot reach app.py — is the server running?', true); }
+}
+async function addExpense(){
+  if(!validate())return;
+  const body = {
+    date: $('fDate').value,
+    details: $('fDetails').value.trim(),
+    amount: parseFloat($('fAmount').value),
+    category: $('fCategory').value
+  };
+  try{
+    await api('/api/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    month = body.date.slice(0,7);
+    $('fDetails').value='';$('fAmount').value='';validate();
+    await load();
+    $('fDetails').focus();
+  }catch(e){ setStatus(e.message, true); }
+}
+async function removeExpense(id){
+  try{ await api('/api/expenses/'+id,{method:'DELETE'}); await load(); }
+  catch(e){ setStatus(e.message, true); }
+}
+
+// ---------- rendering ----------
+function render(){
+  const months=[...new Set(expenses.map(e=>e.date.slice(0,7)))];
+  if(!months.includes(todayISO().slice(0,7))) months.push(todayISO().slice(0,7));
+  months.sort().reverse();
+  if(!months.includes(month)) month=months[0];
+  $('monthSelect').innerHTML=months.map(m=>`<option value="${m}"${m===month?' selected':''}>${monthLabel(m)}</option>`).join('');
+
+  const mExp=expenses.filter(e=>e.date.slice(0,7)===month);
+  const total=mExp.reduce((s,e)=>s+e.amount,0);
+  $('total').textContent=fmt(total);
+  setStatus(mExp.length+' entries · saved to expenses.db', false);
+
+  const pill=$('filterPill');
+  if(filterCat){
+    pill.className='filterPill on';
+    pill.innerHTML=`<span class="dot" style="background:${catColor(filterCat)}"></span>${esc(filterCat)} — clear filter ✕`;
+  } else pill.className='filterPill';
+
+  const visible=filterCat?mExp.filter(e=>e.category===filterCat):mExp;
+  const byDay=new Map();
+  visible.forEach(e=>{if(!byDay.has(e.date))byDay.set(e.date,[]);byDay.get(e.date).push(e);});
+  let html='';
+  if(!byDay.size){
+    html=`<div class="empty">No expenses logged ${filterCat?'for '+esc(filterCat):'this month'} yet. Add one above.</div>`;
+  }
+  for(const [date,items] of byDay){
+    const sub=items.reduce((s,e)=>s+e.amount,0);
+    html+=`<div style="margin-bottom:18px"><div class="dayHead"><span>${dayLabel(date)}</span><span class="mono">${fmt(sub)}</span></div>`;
+    for(const e of items){
+      html+=`<div class="row">
+        <button class="dot" style="background:${catColor(e.category)}" data-filter="${esc(e.category)}" title="Filter by ${esc(e.category)}" aria-label="Filter by ${esc(e.category)}"></button>
+        <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}</small></div>
+        <div class="amt">${fmt(e.amount)}</div>
+        <button class="del" data-del="${e.id}" title="Delete" aria-label="Delete ${esc(e.details)}">✕</button>
+      </div>`;
+    }
+    html+='</div>';
+  }
+  $('ledger').innerHTML=html;
+
+  const map={};
+  mExp.forEach(e=>map[e.category]=(map[e.category]||0)+e.amount);
+  const cats=Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  renderChart(cats,total);
+  renderBreakdown(cats,total);
+}
+
+function renderChart(cats,total){
+  const box=$('chart');
+  if(!cats.length){box.innerHTML='<span style="color:#7A857D;font-size:14px">Nothing to chart yet.</span>';return;}
+  const cx=105,cy=105,R=88,r=54;
+  let a0=-Math.PI/2, paths='';
+  for(const c of cats){
+    const frac=c.value/total, a1=a0+frac*2*Math.PI;
+    const large=(a1-a0)>Math.PI?1:0;
+    const p=(ang,rad)=>[cx+rad*Math.cos(ang),cy+rad*Math.sin(ang)];
+    const [x0,y0]=p(a0,R),[x1,y1]=p(a1,R),[x2,y2]=p(a1,r),[x3,y3]=p(a0,r);
+    const dim=filterCat&&filterCat!==c.name?0.3:1;
+    paths+=`<path class="slice" d="M${x0},${y0} A${R},${R} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 ${large} 0 ${x3},${y3} Z"
+      fill="${catColor(c.name)}" opacity="${dim}" stroke="#FBFCFA" stroke-width="2"
+      data-filter="${esc(c.name)}"><title>${esc(c.name)}: ${fmt(c.value)} (${Math.round(frac*100)}%)</title></path>`;
+    a0=a1;
+  }
+  box.innerHTML=`<svg viewBox="0 0 210 210" width="210" height="210" role="img" aria-label="Spending by category">${paths}
+    <text x="105" y="100" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#8A948C" letter-spacing="1">TOTAL</text>
+    <text x="105" y="120" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" fill="#16281F">${fmt(total)}</text></svg>`;
+}
+
+function renderBreakdown(cats,total){
+  let html='';
+  for(const c of cats){
+    const bold=filterCat===c.name?'font-weight:700':'';
+    html+=`<button class="rrow" style="${bold}" data-filter="${esc(c.name)}">
+      <span class="nm"><span class="dot" style="background:${catColor(c.name)}"></span><i>${esc(c.name.toUpperCase())}</i></span>
+      <span>${fmt(c.value)} <span class="pct">${total?Math.round(c.value/total*100):0}%</span></span>
+    </button>`;
+  }
+  html+=`<div class="rrow total"><span>TOTAL</span><span>${fmt(total)}</span></div>`;
+  $('breakdown').innerHTML=html;
+}
+
+// ---------- events ----------
+function validate(){
+  const ok=$('fDetails').value.trim() && parseFloat($('fAmount').value)>0 && $('fDate').value;
+  $('addBtn').disabled=!ok; return ok;
+}
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-filter],[data-del]');
+  if(!t)return;
+  if(t.dataset.del) removeExpense(t.dataset.del);
+  else if(t.dataset.filter){ filterCat=filterCat===t.dataset.filter?null:t.dataset.filter; render(); }
+});
+$('filterPill').addEventListener('click',()=>{filterCat=null;render();});
+$('monthSelect').addEventListener('change',ev=>{month=ev.target.value;filterCat=null;render();});
+$('addBtn').addEventListener('click',addExpense);
+['fDetails','fAmount'].forEach(id=>$(id).addEventListener('keydown',ev=>{if(ev.key==='Enter')addExpense();}));
+['fDetails','fAmount','fDate'].forEach(id=>$(id).addEventListener('input',validate));
+$('archiveBtn').addEventListener('click',async()=>{
+  try{
+    const res=await api('/api/archive',{method:'POST'});
+    setStatus(res.written.length?('archived: '+res.written.join(', ')):'no completed months to archive yet',false);
+  }catch(e){ setStatus(e.message,true); }
+});
+
+// ---------- init ----------
+$('fCategory').innerHTML=CATEGORIES.map(c=>`<option>${c[0]}</option>`).join('');
+$('fCategory').value='Coffee';
+$('fDate').value=todayISO();
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# personal data — never commit
+expenses.db
+archives/
+
+# noise
+__pycache__/
+*.pyc
+nohup.out
+server.log
+.DS_Store
