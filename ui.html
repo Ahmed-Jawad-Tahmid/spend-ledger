@@ -16,11 +16,11 @@
     color-scheme:light;
   }
   html[data-theme="cream"]{
-    --bg:#F6F1E7; --surface:#FFFDF7; --paper:#FBF7EC;
-    --ink:#3B3428; --muted:#7A7060; --faint:#9C9280;
-    --line:#E5DCC9; --line2:#D6CBB2; --accent:#6E7F3C; --danger:#B04A2E;
-    --strong:#2E2820; --rowline:#EDE5D4; --muted2:#8A8070;
-    --del:#C9BFA9; --hint:#A89E8C; --shadow:rgba(59,52,40,.08);
+    --bg:#EAE0CC; --surface:#F5EDDC; --paper:#F0E7D2;
+    --ink:#33291B; --muted:#6E6350; --faint:#8F8470;
+    --line:#D5C7A9; --line2:#C2B28D; --accent:#67762F; --danger:#9E4426;
+    --strong:#281F12; --rowline:#DFD3B8; --muted2:#7E7360;
+    --del:#B0A283; --hint:#988C74; --shadow:rgba(51,41,27,.1);
     color-scheme:light;
   }
   html[data-theme="dark"]{
@@ -66,6 +66,8 @@
   #monthSelect{font-size:26px;font-weight:700;border:none;background:transparent;color:var(--ink);padding:0;font-family:inherit}
   #total{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--strong)}
   #status{font-family:var(--mono);font-size:11px;color:var(--faint);min-height:14px;text-align:right}
+  #delta{font-family:var(--mono);font-size:11px;min-height:13px;text-align:right}
+  #delta.up{color:var(--danger)} #delta.down{color:var(--accent)}
   #status.err{color:var(--danger)}
   .addCard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:22px}
   .addGrid{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
@@ -128,6 +130,7 @@
       <div>
         <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
         <div id="total" style="text-align:right">$0.00</div>
+        <div id="delta"></div>
         <div id="status"></div>
       </div>
     </div>
@@ -151,6 +154,7 @@
     </section>
     <aside class="receipt">
       <div id="chart" style="height:210px;display:flex;align-items:center;justify-content:center"></div>
+      <div id="daily" style="margin-top:12px"></div>
       <div class="tear"></div>
       <div id="breakdown"></div>
       <div class="hint">* TAP A SLICE OR LINE TO FILTER *</div>
@@ -255,6 +259,16 @@ function render(){
   const curExp=mExp.filter(e=>(e.currency||'CAD')===curCode);
   const total=curExp.reduce((s,e)=>s+e.amount,0);
   $('total').textContent=fmt(total);
+
+  const [py,pm]=month.split('-').map(Number);
+  const prevKey=(pm===1?py-1:py)+'-'+String(pm===1?12:pm-1).padStart(2,'0');
+  const prevTotal=expenses.filter(e=>e.date.slice(0,7)===prevKey&&(e.currency||'CAD')===curCode).reduce((s,e)=>s+e.amount,0);
+  const dEl=$('delta');
+  if(prevTotal>0&&total>0){
+    const pct=Math.round((total-prevTotal)/prevTotal*100);
+    dEl.textContent=(pct>=0?'▲ +':'▼ ')+pct+'% vs '+monthLabel(prevKey);
+    dEl.className=pct>=0?'up':'down';
+  } else { dEl.textContent=''; dEl.className=''; }
   const otherCur=mExp.length-curExp.length;
   setStatus(mExp.length+' entries'+(otherCur?` (${otherCur} in other currencies)`:'')+' · saved to expenses.db', false);
 
@@ -307,6 +321,7 @@ function render(){
   const cats=Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   const cardTotal=curExp.filter(e=>e.account==='BD Card').reduce((s,e)=>s+e.amount,0);
   renderChart(cats,total);
+  renderDaily(curExp);
   renderBreakdown(cats,total,cardTotal);
 }
 
@@ -329,6 +344,30 @@ function renderChart(cats,total){
   box.innerHTML=`<svg viewBox="0 0 210 210" width="210" height="210" role="img" aria-label="Spending by category">${paths}
     <text x="105" y="100" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" style="fill:var(--faint)" letter-spacing="1">TOTAL</text>
     <text x="105" y="120" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" style="fill:var(--strong)">${fmt(total)}</text></svg>`;
+}
+
+function renderDaily(items){
+  const box=$('daily');
+  const [y,m]=month.split('-').map(Number);
+  const nDays=new Date(y,m,0).getDate();
+  const sums=Array(nDays).fill(0);
+  items.forEach(e=>{sums[Number(e.date.slice(8,10))-1]+=e.amount;});
+  const max=Math.max(...sums);
+  if(max<=0){box.innerHTML='';return;}
+  const W=306,H=66,base=52,bw=W/nDays;
+  const today=todayISO(), isThisMonth=today.slice(0,7)===month;
+  let bars='';
+  for(let i=0;i<nDays;i++){
+    if(sums[i]<=0)continue;
+    const h=Math.max(2,sums[i]/max*44);
+    const isToday=isThisMonth&&Number(today.slice(8,10))===i+1;
+    const iso=month+'-'+String(i+1).padStart(2,'0');
+    bars+=`<rect x="${(i*bw+1).toFixed(1)}" y="${(base-h).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" style="fill:var(--accent)" opacity="${isToday?1:0.7}"><title>${dayLabel(iso)}: ${fmt(sums[i])}</title></rect>`;
+  }
+  const lbl=(d,anchor)=>`<text x="${((d-1)*bw+bw/2).toFixed(1)}" y="${H-2}" text-anchor="${anchor||'middle'}" font-family="ui-monospace,Menlo,monospace" font-size="9" style="fill:var(--faint)">${d}</text>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Spending per day">
+    <line x1="0" y1="${base}" x2="${W}" y2="${base}" style="stroke:var(--line2)" stroke-width="1"/>
+    ${bars}${lbl(1)}${lbl(8)}${lbl(15)}${lbl(22)}${lbl(nDays)}</svg>`;
 }
 
 function renderBreakdown(cats,total,cardTotal){
@@ -360,6 +399,19 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.save) saveEdit(t.dataset.save);
   else if(t.dataset.cancel){ editId=null; render(); }
   else if(t.dataset.filter){ filterCat=filterCat===t.dataset.filter?null:t.dataset.filter; render(); }
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Escape'){
+    if(editId!==null){editId=null;render();}
+    else if(filterCat){filterCat=null;render();}
+    return;
+  }
+  const tag=ev.target.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if((ev.key==='n'||ev.key==='N')&&!ev.ctrlKey&&!ev.metaKey&&!ev.altKey){
+    ev.preventDefault();
+    $('fDetails').focus();
+  }
 });
 $('filterPill').addEventListener('click',()=>{filterCat=null;render();});
 $('monthSelect').addEventListener('change',ev=>{month=ev.target.value;filterCat=null;render();});
