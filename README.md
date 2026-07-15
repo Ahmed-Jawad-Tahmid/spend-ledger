@@ -50,7 +50,8 @@ every entry is saved to disk the moment you add it.
 | Method | Endpoint             | Description                          |
 |--------|----------------------|--------------------------------------|
 | GET    | `/api/expenses`      | All expenses, newest first           |
-| POST   | `/api/expenses`      | Add `{date, details, amount, category}` |
+| POST   | `/api/expenses`      | Add `{date, details, amount, category, currency}` |
+| PUT    | `/api/expenses/<id>` | Update all fields of an expense      |
 | DELETE | `/api/expenses/<id>` | Remove an expense                    |
 | POST   | `/api/archive`       | Export completed months to CSV       |
 

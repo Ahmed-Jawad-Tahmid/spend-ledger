@@ -55,6 +55,12 @@
   .amt{font-family:var(--mono);font-weight:600}
   .del{border:none;background:transparent;color:var(--del);font-size:13px;cursor:pointer;padding:2px 4px}
   .del:hover{color:var(--danger)}
+  .edit{border:none;background:transparent;color:var(--del);font-size:13px;cursor:pointer;padding:2px 4px}
+  .edit:hover{color:var(--accent)}
+  .row.editing{flex-wrap:wrap}
+  .row.editing input,.row.editing select{padding:6px 8px;font-size:13px}
+  .eSave{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+  .eCancel{background:transparent;border:1px solid var(--line2);color:var(--muted);border-radius:6px;padding:7px 12px;font-size:13px;font-family:inherit;cursor:pointer}
   .empty{border:1.5px dashed var(--line2);border-radius:10px;padding:28px;text-align:center;color:var(--muted2);font-size:14px}
   .filterPill{display:none;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;margin-bottom:12px;font-family:inherit;color:var(--ink);cursor:pointer}
   .filterPill.on{display:inline-flex}
@@ -137,6 +143,7 @@ const CURRENCIES = ['CAD','USD','EUR','GBP','JPY','CNY','INR','AUD','CHF','SGD',
 let expenses = [];
 let month = todayISO().slice(0,7);
 let filterCat = null;
+let editId = null;
 let curCode = localStorage.getItem('currency') || 'CAD';
 if(!CURRENCIES.includes(curCode)) curCode = 'CAD';
 
@@ -183,6 +190,22 @@ async function removeExpense(id){
   try{ await api('/api/expenses/'+id,{method:'DELETE'}); await load(); }
   catch(e){ setStatus(e.message, true); }
 }
+async function saveEdit(id){
+  const body = {
+    date: $('eDate').value,
+    details: $('eDetails').value.trim(),
+    amount: parseFloat($('eAmount').value),
+    category: $('eCategory').value,
+    currency: $('eCurrency').value
+  };
+  if(!body.date || !body.details || !(body.amount>0)){ setStatus('fill in date, details and a positive amount', true); return; }
+  try{
+    await api('/api/expenses/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    editId=null;
+    month=body.date.slice(0,7);
+    await load();
+  }catch(e){ setStatus(e.message, true); }
+}
 
 // ---------- rendering ----------
 function render(){
@@ -218,10 +241,23 @@ function render(){
     const subTxt=Object.entries(subs).map(([c,v])=>fmt(v,c)).join(' + ');
     html+=`<div style="margin-bottom:18px"><div class="dayHead"><span>${dayLabel(date)}</span><span class="mono">${subTxt}</span></div>`;
     for(const e of items){
+      if(e.id===editId){
+        html+=`<div class="row editing" data-editrow="${e.id}">
+          <input type="date" id="eDate" value="${e.date}" style="flex:1;min-width:120px">
+          <input type="text" id="eDetails" value="${esc(e.details)}" style="flex:2;min-width:140px">
+          <input type="number" id="eAmount" min="0" step="0.01" value="${e.amount}" class="mono" style="flex:1;min-width:80px">
+          <select id="eCategory" style="flex:1;min-width:110px">${CATEGORIES.map(c=>`<option${c[0]===e.category?' selected':''}>${c[0]}</option>`).join('')}</select>
+          <select id="eCurrency" style="width:auto">${CURRENCIES.map(c=>`<option${c===(e.currency||'CAD')?' selected':''}>${c}</option>`).join('')}</select>
+          <button class="eSave" data-save="${e.id}">Save</button>
+          <button class="eCancel" data-cancel="1">Cancel</button>
+        </div>`;
+        continue;
+      }
       html+=`<div class="row">
         <button class="dot" style="background:${catColor(e.category)}" data-filter="${esc(e.category)}" title="Filter by ${esc(e.category)}" aria-label="Filter by ${esc(e.category)}"></button>
         <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}</small></div>
         <div class="amt">${fmt(e.amount,e.currency||'CAD')}</div>
+        <button class="edit" data-edit="${e.id}" title="Edit" aria-label="Edit ${esc(e.details)}">✎</button>
         <button class="del" data-del="${e.id}" title="Delete" aria-label="Delete ${esc(e.details)}">✕</button>
       </div>`;
     }
@@ -276,9 +312,12 @@ function validate(){
   $('addBtn').disabled=!ok; return ok;
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-filter],[data-del]');
+  const t=ev.target.closest('[data-filter],[data-del],[data-edit],[data-save],[data-cancel]');
   if(!t)return;
   if(t.dataset.del) removeExpense(t.dataset.del);
+  else if(t.dataset.edit){ editId=Number(t.dataset.edit); render(); }
+  else if(t.dataset.save) saveEdit(t.dataset.save);
+  else if(t.dataset.cancel){ editId=null; render(); }
   else if(t.dataset.filter){ filterCat=filterCat===t.dataset.filter?null:t.dataset.filter; render(); }
 });
 $('filterPill').addEventListener('click',()=>{filterCat=null;render();});
