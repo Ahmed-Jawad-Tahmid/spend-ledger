@@ -51,6 +51,7 @@
   .row .det{flex:1;min-width:0}
   .row .det b{font-weight:500;display:block}
   .row .det small{font-size:12px;color:var(--muted2)}
+  .cardTag{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--accent)}
   .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:none;padding:0;cursor:pointer}
   .amt{font-family:var(--mono);font-weight:600}
   .del{border:none;background:transparent;color:var(--del);font-size:13px;cursor:pointer;padding:2px 4px}
@@ -106,6 +107,7 @@
       <label class="field grow"><span>Details</span><input type="text" id="fDetails" placeholder="Good Earth iced coffee"></label>
       <label class="field"><span>Amount</span><input type="number" id="fAmount" min="0" step="0.01" placeholder="3.94" class="mono"></label>
       <label class="field"><span>Category</span><select id="fCategory"></select></label>
+      <label class="field" style="flex:0;min-width:auto;align-items:center"><span title="Paid with the supplementary card settled in BDT">BDT&nbsp;card</span><input type="checkbox" id="fCard" style="width:18px;height:18px;margin:8px 0;cursor:pointer"></label>
       <button id="addBtn" disabled>Add expense</button>
     </div>
   </section>
@@ -130,7 +132,7 @@
 <script>
 'use strict';
 const CATEGORIES = [
-  ['Rent','#1F6E4E'],['Grocery','#2E8B6A'],['Lunch','#E0A526'],['Coffee','#8C5A2B'],
+  ['Rent','#1F6E4E'],['Grocery','#2E8B6A'],['Lunch','#E0A526'],['Food Delivery','#3FA0C4'],['Coffee','#8C5A2B'],
   ['Phone','#3E6B8E'],['Gas','#6B4E8E'],['Snacks & Drinks','#C96A3B'],
   ['Home Supplies','#5E7350'],['Personal Care','#B04A6E'],
   ['Car Maintenance','#2F8C8C'],['Subscriptions & Fun','#A03E8C'],
@@ -138,7 +140,7 @@ const CATEGORIES = [
 ];
 const catColor = n => (CATEGORIES.find(c=>c[0]===n)||CATEGORIES[CATEGORIES.length-1])[1];
 
-const CURRENCIES = ['CAD','USD','EUR','GBP','JPY','CNY','INR','AUD','CHF','SGD','AED','SAR','BDT'];
+const CURRENCIES = ['CAD','BDT','USD','EUR','GBP','JPY','CNY','INR','AUD','CHF','SGD','AED','SAR'];
 
 let expenses = [];
 let month = todayISO().slice(0,7);
@@ -176,12 +178,13 @@ async function addExpense(){
     details: $('fDetails').value.trim(),
     amount: parseFloat($('fAmount').value),
     category: $('fCategory').value,
-    currency: curCode
+    currency: curCode,
+    account: $('fCard').checked ? 'BDT Card' : 'Main'
   };
   try{
     await api('/api/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     month = body.date.slice(0,7);
-    $('fDetails').value='';$('fAmount').value='';validate();
+    $('fDetails').value='';$('fAmount').value='';$('fCard').checked=false;validate();
     await load();
     $('fDetails').focus();
   }catch(e){ setStatus(e.message, true); }
@@ -196,7 +199,8 @@ async function saveEdit(id){
     details: $('eDetails').value.trim(),
     amount: parseFloat($('eAmount').value),
     category: $('eCategory').value,
-    currency: $('eCurrency').value
+    currency: $('eCurrency').value,
+    account: $('eCard').checked ? 'BDT Card' : 'Main'
   };
   if(!body.date || !body.details || !(body.amount>0)){ setStatus('fill in date, details and a positive amount', true); return; }
   try{
@@ -248,6 +252,7 @@ function render(){
           <input type="number" id="eAmount" min="0" step="0.01" value="${e.amount}" class="mono" style="flex:1;min-width:80px">
           <select id="eCategory" style="flex:1;min-width:110px">${CATEGORIES.map(c=>`<option${c[0]===e.category?' selected':''}>${c[0]}</option>`).join('')}</select>
           <select id="eCurrency" style="width:auto">${CURRENCIES.map(c=>`<option${c===(e.currency||'CAD')?' selected':''}>${c}</option>`).join('')}</select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="eCard"${e.account==='BDT Card'?' checked':''} style="width:16px;height:16px;cursor:pointer">BDT card</label>
           <button class="eSave" data-save="${e.id}">Save</button>
           <button class="eCancel" data-cancel="1">Cancel</button>
         </div>`;
@@ -255,7 +260,7 @@ function render(){
       }
       html+=`<div class="row">
         <button class="dot" style="background:${catColor(e.category)}" data-filter="${esc(e.category)}" title="Filter by ${esc(e.category)}" aria-label="Filter by ${esc(e.category)}"></button>
-        <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}</small></div>
+        <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}${e.account==='BDT Card'?' · <span class="cardTag">BDT CARD</span>':''}</small></div>
         <div class="amt">${fmt(e.amount,e.currency||'CAD')}</div>
         <button class="edit" data-edit="${e.id}" title="Edit" aria-label="Edit ${esc(e.details)}">✎</button>
         <button class="del" data-del="${e.id}" title="Delete" aria-label="Delete ${esc(e.details)}">✕</button>
@@ -268,8 +273,9 @@ function render(){
   const map={};
   curExp.forEach(e=>map[e.category]=(map[e.category]||0)+e.amount);
   const cats=Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  const cardTotal=curExp.filter(e=>e.account==='BDT Card').reduce((s,e)=>s+e.amount,0);
   renderChart(cats,total);
-  renderBreakdown(cats,total);
+  renderBreakdown(cats,total,cardTotal);
 }
 
 function renderChart(cats,total){
@@ -293,7 +299,7 @@ function renderChart(cats,total){
     <text x="105" y="120" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" style="fill:var(--strong)">${fmt(total)}</text></svg>`;
 }
 
-function renderBreakdown(cats,total){
+function renderBreakdown(cats,total,cardTotal){
   let html='';
   for(const c of cats){
     const bold=filterCat===c.name?'font-weight:700':'';
@@ -303,6 +309,9 @@ function renderBreakdown(cats,total){
     </button>`;
   }
   html+=`<div class="rrow total"><span>TOTAL</span><span>${fmt(total)}</span></div>`;
+  if(cardTotal>0){
+    html+=`<div class="rrow" style="cursor:default;color:var(--muted)"><span class="nm"><i>OF WHICH ON BDT CARD</i></span><span>${fmt(cardTotal)} <span class="pct">${total?Math.round(cardTotal/total*100):0}%</span></span></div>`;
+  }
   $('breakdown').innerHTML=html;
 }
 

@@ -51,6 +51,10 @@ def init_db():
             con.execute(
                 "ALTER TABLE expenses ADD COLUMN currency TEXT NOT NULL DEFAULT 'CAD'"
             )
+        if "account" not in cols:
+            con.execute(
+                "ALTER TABLE expenses ADD COLUMN account TEXT NOT NULL DEFAULT 'Main'"
+            )
         if SEED and con.execute("SELECT COUNT(*) FROM expenses").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO expenses (date, details, amount, category) VALUES (?,?,?,?)",
@@ -75,16 +79,16 @@ def archive_completed_months():
             if m >= current:
                 continue  # only completed months
             rows = con.execute(
-                "SELECT date, details, amount, category, currency FROM expenses "
+                "SELECT date, details, amount, category, currency, account FROM expenses "
                 "WHERE substr(date,1,7)=? ORDER BY date, id",
                 (m,),
             ).fetchall()
             out = ARCHIVE_DIR / f"{m}.csv"
             with out.open("w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                w.writerow(["Date", "Details", "Amount", "Currency", "Category"])
+                w.writerow(["Date", "Details", "Amount", "Currency", "Category", "Account"])
                 for r in rows:
-                    w.writerow([r["date"], r["details"], f"{r['amount']:.2f}", r["currency"], r["category"]])
+                    w.writerow([r["date"], r["details"], f"{r['amount']:.2f}", r["currency"], r["category"], r["account"]])
                 w.writerow([])
                 totals = {}
                 for r in rows:
@@ -142,6 +146,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(b["category"]),
                 )
                 cur_code = str(b.get("currency", "CAD")).upper()
+                acct = str(b.get("account", "Main")).strip() or "Main"
                 date.fromisoformat(d)  # validates format
                 assert det and amt > 0
                 assert len(cur_code) == 3 and cur_code.isalpha()
@@ -150,10 +155,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with get_db() as con:
                 cur = con.execute(
-                    "INSERT INTO expenses (date, details, amount, category, currency) VALUES (?,?,?,?,?)",
-                    (d, det, amt, cat, cur_code),
+                    "INSERT INTO expenses (date, details, amount, category, currency, account) VALUES (?,?,?,?,?,?)",
+                    (d, det, amt, cat, cur_code, acct),
                 )
-            self.send(201, {"id": cur.lastrowid, "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code})
+            self.send(201, {"id": cur.lastrowid, "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code, "account": acct})
         elif self.path == "/api/archive":
             self.send(200, {"written": archive_completed_months()})
         else:
@@ -171,6 +176,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(b["category"]),
                 )
                 cur_code = str(b.get("currency", "CAD")).upper()
+                acct = str(b.get("account", "Main")).strip() or "Main"
                 date.fromisoformat(d)
                 assert det and amt > 0
                 assert len(cur_code) == 3 and cur_code.isalpha()
@@ -179,11 +185,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with get_db() as con:
                 cur = con.execute(
-                    "UPDATE expenses SET date=?, details=?, amount=?, category=?, currency=? WHERE id=?",
-                    (d, det, amt, cat, cur_code, int(parts[2])),
+                    "UPDATE expenses SET date=?, details=?, amount=?, category=?, currency=?, account=? WHERE id=?",
+                    (d, det, amt, cat, cur_code, acct, int(parts[2])),
                 )
             if cur.rowcount:
-                self.send(200, {"id": int(parts[2]), "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code})
+                self.send(200, {"id": int(parts[2]), "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code, "account": acct})
             else:
                 self.send(404, {"error": "no such expense"})
         else:
