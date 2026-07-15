@@ -111,6 +111,9 @@
   .toolRow{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
   .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
   svg .slice{cursor:pointer;transition:opacity .15s}
+  #daily rect{transition:opacity .1s}
+  #daily rect:hover{opacity:1}
+  #dailyInfo{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;min-height:15px;margin-top:4px}
   #curSelect,#themeSelect{width:auto;border-radius:999px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--muted);background:var(--surface);border:1px solid var(--line2);cursor:pointer}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 </style>
@@ -155,6 +158,7 @@
     <aside class="receipt">
       <div id="chart" style="height:210px;display:flex;align-items:center;justify-content:center"></div>
       <div id="daily" style="margin-top:12px"></div>
+      <div id="dailyInfo"></div>
       <div class="tear"></div>
       <div id="breakdown"></div>
       <div class="hint">* TAP A SLICE OR LINE TO FILTER *</div>
@@ -362,7 +366,7 @@ function renderDaily(items){
     const h=Math.max(2,sums[i]/max*44);
     const isToday=isThisMonth&&Number(today.slice(8,10))===i+1;
     const iso=month+'-'+String(i+1).padStart(2,'0');
-    bars+=`<rect x="${(i*bw+1).toFixed(1)}" y="${(base-h).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" style="fill:var(--accent)" opacity="${isToday?1:0.7}"><title>${dayLabel(iso)}: ${fmt(sums[i])}</title></rect>`;
+    bars+=`<rect x="${(i*bw+1).toFixed(1)}" y="${(base-h).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" style="fill:var(--accent)" opacity="${isToday?1:0.7}" data-info="${dayLabel(iso)} · ${fmt(sums[i])}"></rect>`;
   }
   const lbl=(d,anchor)=>`<text x="${((d-1)*bw+bw/2).toFixed(1)}" y="${H-2}" text-anchor="${anchor||'middle'}" font-family="ui-monospace,Menlo,monospace" font-size="9" style="fill:var(--faint)">${d}</text>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Spending per day">
@@ -385,6 +389,28 @@ function renderBreakdown(cats,total,cardTotal){
   }
   $('breakdown').innerHTML=html;
 }
+
+// ---------- autocomplete ----------
+$('fDetails').addEventListener('input',ev=>{
+  if(ev.inputType && ev.inputType.startsWith('delete')) return;
+  const el=ev.target, v=el.value;
+  if(!v) return;
+  const seen=new Set();
+  const names=[];
+  for(const e of expenses){ if(!seen.has(e.details)){seen.add(e.details);names.push(e.details);} }
+  const match=names.find(n=>n.toLowerCase().startsWith(v.toLowerCase()) && n.length>v.length);
+  if(match){
+    el.value=v+match.slice(v.length);
+    el.setSelectionRange(v.length,el.value.length);
+    validate();
+  }
+});
+$('fDetails').addEventListener('keydown',ev=>{
+  const el=ev.target;
+  if((ev.key==='ArrowRight'||ev.key==='End') && el.selectionEnd>el.selectionStart){
+    el.setSelectionRange(el.value.length,el.value.length);
+  }
+});
 
 // ---------- events ----------
 function validate(){
@@ -413,6 +439,11 @@ document.addEventListener('keydown',ev=>{
     $('fDetails').focus();
   }
 });
+$('daily').addEventListener('mouseover',ev=>{
+  const r=ev.target.closest('rect[data-info]');
+  if(r)$('dailyInfo').textContent=r.dataset.info;
+});
+$('daily').addEventListener('mouseout',()=>{$('dailyInfo').textContent='';});
 $('filterPill').addEventListener('click',()=>{filterCat=null;render();});
 $('monthSelect').addEventListener('change',ev=>{month=ev.target.value;filterCat=null;render();});
 $('addBtn').addEventListener('click',addExpense);
