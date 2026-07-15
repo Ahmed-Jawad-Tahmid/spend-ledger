@@ -159,6 +159,36 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send(404, {"error": "not found"})
 
+    def do_PUT(self):
+        parts = self.path.strip("/").split("/")
+        if len(parts) == 3 and parts[:2] == ["api", "expenses"] and parts[2].isdigit():
+            try:
+                b = self.read_json()
+                d, det, amt, cat = (
+                    str(b["date"]),
+                    str(b["details"]).strip(),
+                    round(float(b["amount"]), 2),
+                    str(b["category"]),
+                )
+                cur_code = str(b.get("currency", "CAD")).upper()
+                date.fromisoformat(d)
+                assert det and amt > 0
+                assert len(cur_code) == 3 and cur_code.isalpha()
+            except Exception:
+                self.send(400, {"error": "invalid expense: need date (YYYY-MM-DD), details, amount > 0, category"})
+                return
+            with get_db() as con:
+                cur = con.execute(
+                    "UPDATE expenses SET date=?, details=?, amount=?, category=?, currency=? WHERE id=?",
+                    (d, det, amt, cat, cur_code, int(parts[2])),
+                )
+            if cur.rowcount:
+                self.send(200, {"id": int(parts[2]), "date": d, "details": det, "amount": amt, "category": cat, "currency": cur_code})
+            else:
+                self.send(404, {"error": "no such expense"})
+        else:
+            self.send(404, {"error": "not found"})
+
     def do_DELETE(self):
         parts = self.path.strip("/").split("/")
         if len(parts) == 3 and parts[:2] == ["api", "expenses"] and parts[2].isdigit():
