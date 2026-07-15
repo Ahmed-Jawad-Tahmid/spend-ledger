@@ -15,12 +15,44 @@
     --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
     color-scheme:light;
   }
+  html[data-theme="cream"]{
+    --bg:#F6F1E7; --surface:#FFFDF7; --paper:#FBF7EC;
+    --ink:#3B3428; --muted:#7A7060; --faint:#9C9280;
+    --line:#E5DCC9; --line2:#D6CBB2; --accent:#6E7F3C; --danger:#B04A2E;
+    --strong:#2E2820; --rowline:#EDE5D4; --muted2:#8A8070;
+    --del:#C9BFA9; --hint:#A89E8C; --shadow:rgba(59,52,40,.08);
+    color-scheme:light;
+  }
   html[data-theme="dark"]{
     --bg:#111815; --surface:#1A211D; --paper:#161D19;
     --ink:#E3EAE4; --muted:#9CA9A0; --faint:#79867E;
     --line:#2A342E; --line2:#37433C; --accent:#3FA97C; --danger:#D66A4A;
     --strong:#F0F5F1; --rowline:#242E28; --muted2:#8B978E;
     --del:#4E5A52; --hint:#5E6B63; --shadow:rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+  html[data-theme="dark-default"]{
+    --bg:#0D1117; --surface:#161B22; --paper:#11161D;
+    --ink:#E6EDF3; --muted:#8B949E; --faint:#6E7681;
+    --line:#21262D; --line2:#30363D; --accent:#3FB950; --danger:#F85149;
+    --strong:#F0F6FC; --rowline:#1B2129; --muted2:#848D97;
+    --del:#484F58; --hint:#57606A; --shadow:rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+  html[data-theme="dark-tritanopia"]{
+    --bg:#0D1117; --surface:#161B22; --paper:#11161D;
+    --ink:#E6EDF3; --muted:#8B949E; --faint:#6E7681;
+    --line:#21262D; --line2:#30363D; --accent:#4493F8; --danger:#D2544A;
+    --strong:#F0F6FC; --rowline:#1B2129; --muted2:#848D97;
+    --del:#484F58; --hint:#57606A; --shadow:rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+  html[data-theme="soft-dark"]{
+    --bg:#262622; --surface:#2E2E29; --paper:#2A2A25;
+    --ink:#D6D4C8; --muted:#9A988A; --faint:#7E7C70;
+    --line:#3A3A33; --line2:#46463E; --accent:#8FA876; --danger:#C97B5E;
+    --strong:#E4E2D6; --rowline:#38382F; --muted2:#8E8C7E;
+    --del:#5C5A4E; --hint:#6E6C60; --shadow:rgba(0,0,0,.25);
     color-scheme:dark;
   }
   *{box-sizing:border-box}
@@ -65,7 +97,8 @@
   .empty{border:1.5px dashed var(--line2);border-radius:10px;padding:28px;text-align:center;color:var(--muted2);font-size:14px}
   .filterPill{display:none;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;margin-bottom:12px;font-family:inherit;color:var(--ink);cursor:pointer}
   .filterPill.on{display:inline-flex}
-  .receipt{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px 20px;box-shadow:0 2px 10px var(--shadow)}
+  .receipt{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px 20px;box-shadow:0 2px 10px var(--shadow);position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+  @media (max-width:760px){.receipt{position:static;max-height:none}}
   .tear{border-top:2px dashed var(--line2);margin:14px -16px 12px}
   .rrow{display:flex;justify-content:space-between;gap:12px;width:100%;padding:5px 0;border:none;background:transparent;font-family:var(--mono);font-size:13px;color:var(--ink);text-align:left;cursor:pointer;font-variant-numeric:tabular-nums}
   .rrow .nm{display:flex;align-items:center;gap:8px;min-width:0}
@@ -76,8 +109,7 @@
   .toolRow{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
   .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
   svg .slice{cursor:pointer;transition:opacity .15s}
-  #themeBtn{border:1px solid var(--line2);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12px;font-family:var(--mono);cursor:pointer;letter-spacing:1px}
-  #curSelect{width:auto;border-radius:999px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--muted);background:var(--surface);border:1px solid var(--line2);cursor:pointer}
+  #curSelect,#themeSelect{width:auto;border-radius:999px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--muted);background:var(--surface);border:1px solid var(--line2);cursor:pointer}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 </style>
 </head>
@@ -91,7 +123,7 @@
     <div class="headRight">
       <div style="display:flex;gap:8px;align-items:center">
         <select id="curSelect" aria-label="Currency"></select>
-        <button id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">DARK</button>
+        <select id="themeSelect" aria-label="Theme"></select>
       </div>
       <div>
         <div class="eyebrow" style="text-align:right">SPENT THIS MONTH</div>
@@ -107,7 +139,7 @@
       <label class="field grow"><span>Details</span><input type="text" id="fDetails" placeholder="Good Earth iced coffee"></label>
       <label class="field"><span>Amount</span><input type="number" id="fAmount" min="0" step="0.01" placeholder="3.94" class="mono"></label>
       <label class="field"><span>Category</span><select id="fCategory"></select></label>
-      <label class="field" style="flex:0;min-width:auto;align-items:center"><span title="Paid with the supplementary card settled in BDT">BDT&nbsp;card</span><input type="checkbox" id="fCard" style="width:18px;height:18px;margin:8px 0;cursor:pointer"></label>
+      <label class="field" style="flex:0;min-width:auto;align-items:center"><span title="Paid with the Standard Chartered supplementary card settled in BDT">BD&nbsp;card</span><input type="checkbox" id="fCard" style="width:18px;height:18px;margin:8px 0;cursor:pointer"></label>
       <button id="addBtn" disabled>Add expense</button>
     </div>
   </section>
@@ -179,7 +211,7 @@ async function addExpense(){
     amount: parseFloat($('fAmount').value),
     category: $('fCategory').value,
     currency: curCode,
-    account: $('fCard').checked ? 'BDT Card' : 'Main'
+    account: $('fCard').checked ? 'BD Card' : 'Main'
   };
   try{
     await api('/api/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -200,7 +232,7 @@ async function saveEdit(id){
     amount: parseFloat($('eAmount').value),
     category: $('eCategory').value,
     currency: $('eCurrency').value,
-    account: $('eCard').checked ? 'BDT Card' : 'Main'
+    account: $('eCard').checked ? 'BD Card' : 'Main'
   };
   if(!body.date || !body.details || !(body.amount>0)){ setStatus('fill in date, details and a positive amount', true); return; }
   try{
@@ -252,7 +284,7 @@ function render(){
           <input type="number" id="eAmount" min="0" step="0.01" value="${e.amount}" class="mono" style="flex:1;min-width:80px">
           <select id="eCategory" style="flex:1;min-width:110px">${CATEGORIES.map(c=>`<option${c[0]===e.category?' selected':''}>${c[0]}</option>`).join('')}</select>
           <select id="eCurrency" style="width:auto">${CURRENCIES.map(c=>`<option${c===(e.currency||'CAD')?' selected':''}>${c}</option>`).join('')}</select>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="eCard"${e.account==='BDT Card'?' checked':''} style="width:16px;height:16px;cursor:pointer">BDT card</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="eCard"${e.account==='BD Card'?' checked':''} style="width:16px;height:16px;cursor:pointer">BD card</label>
           <button class="eSave" data-save="${e.id}">Save</button>
           <button class="eCancel" data-cancel="1">Cancel</button>
         </div>`;
@@ -260,7 +292,7 @@ function render(){
       }
       html+=`<div class="row">
         <button class="dot" style="background:${catColor(e.category)}" data-filter="${esc(e.category)}" title="Filter by ${esc(e.category)}" aria-label="Filter by ${esc(e.category)}"></button>
-        <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}${e.account==='BDT Card'?' · <span class="cardTag">BDT CARD</span>':''}</small></div>
+        <div class="det"><b>${esc(e.details)}</b><small>${esc(e.category)}${e.account==='BD Card'?' · <span class="cardTag">BD CARD</span>':''}</small></div>
         <div class="amt">${fmt(e.amount,e.currency||'CAD')}</div>
         <button class="edit" data-edit="${e.id}" title="Edit" aria-label="Edit ${esc(e.details)}">✎</button>
         <button class="del" data-del="${e.id}" title="Delete" aria-label="Delete ${esc(e.details)}">✕</button>
@@ -273,7 +305,7 @@ function render(){
   const map={};
   curExp.forEach(e=>map[e.category]=(map[e.category]||0)+e.amount);
   const cats=Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
-  const cardTotal=curExp.filter(e=>e.account==='BDT Card').reduce((s,e)=>s+e.amount,0);
+  const cardTotal=curExp.filter(e=>e.account==='BD Card').reduce((s,e)=>s+e.amount,0);
   renderChart(cats,total);
   renderBreakdown(cats,total,cardTotal);
 }
@@ -310,7 +342,7 @@ function renderBreakdown(cats,total,cardTotal){
   }
   html+=`<div class="rrow total"><span>TOTAL</span><span>${fmt(total)}</span></div>`;
   if(cardTotal>0){
-    html+=`<div class="rrow" style="cursor:default;color:var(--muted)"><span class="nm"><i>OF WHICH ON BDT CARD</i></span><span>${fmt(cardTotal)} <span class="pct">${total?Math.round(cardTotal/total*100):0}%</span></span></div>`;
+    html+=`<div class="rrow" style="cursor:default;color:var(--muted)"><span class="nm"><i>OF WHICH ON BD CARD</i></span><span>${fmt(cardTotal)} <span class="pct">${total?Math.round(cardTotal/total*100):0}%</span></span></div>`;
   }
   $('breakdown').innerHTML=html;
 }
@@ -342,17 +374,23 @@ $('archiveBtn').addEventListener('click',async()=>{
 });
 
 // ---------- theme ----------
+const THEMES=[
+  ['light','Light'],['cream','Cream'],
+  ['dark','Dark Green'],['dark-default','Dark Default'],
+  ['dark-tritanopia','Dark Tritanopia'],['soft-dark','Soft Dark']
+];
 function applyTheme(t){
   document.documentElement.dataset.theme=t;
-  $('themeBtn').textContent=t==='dark'?'LIGHT':'DARK';
+  $('themeSelect').value=t;
 }
-const savedTheme=localStorage.getItem('theme')
+$('themeSelect').innerHTML=THEMES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+let savedTheme=localStorage.getItem('theme')
   || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+if(!THEMES.some(([v])=>v===savedTheme)) savedTheme='light';
 applyTheme(savedTheme);
-$('themeBtn').addEventListener('click',()=>{
-  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
-  localStorage.setItem('theme',next);
-  applyTheme(next);
+$('themeSelect').addEventListener('change',ev=>{
+  localStorage.setItem('theme',ev.target.value);
+  applyTheme(ev.target.value);
 });
 
 // ---------- currency ----------

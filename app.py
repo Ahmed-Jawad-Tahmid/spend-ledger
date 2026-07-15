@@ -55,6 +55,7 @@ def init_db():
             con.execute(
                 "ALTER TABLE expenses ADD COLUMN account TEXT NOT NULL DEFAULT 'Main'"
             )
+        con.execute("UPDATE expenses SET account='BD Card' WHERE account='BDT Card'")
         if SEED and con.execute("SELECT COUNT(*) FROM expenses").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO expenses (date, details, amount, category) VALUES (?,?,?,?)",
