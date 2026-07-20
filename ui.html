@@ -111,6 +111,9 @@
   .toolRow{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
   .toolRow button{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;color:var(--muted);cursor:pointer}
   svg .slice{cursor:pointer;transition:opacity .15s}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:60px 16px;z-index:20}
+  .overlay.on{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;width:min(480px,100%);max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px var(--shadow)}
   #daily rect{transition:opacity .1s}
   #daily rect:hover{opacity:1}
   #dailyInfo{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;min-height:15px;margin-top:4px}
@@ -163,9 +166,25 @@
       <div id="breakdown"></div>
       <div class="hint">* TAP A SLICE OR LINE TO FILTER *</div>
       <div class="toolRow">
+        <button id="staplesBtn" title="Totals for your staple items">Staples</button>
         <button id="archiveBtn" title="Write CSVs for completed months into archives/">Archive past months</button>
       </div>
     </aside>
+  </div>
+</div>
+
+<div class="overlay" id="stapleOverlay">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="eyebrow" style="margin:0">STAPLES · <span id="stapleCur"></span></div>
+      <button class="del" id="stapleClose" title="Close" style="font-size:16px">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="stapleInput" placeholder="Add a staple, e.g. Eggs">
+      <button id="stapleAdd" class="eSave">Add</button>
+    </div>
+    <div id="stapleList"></div>
+    <div class="hint">MATCHES ANY ENTRY WHOSE DETAILS CONTAIN THE NAME</div>
   </div>
 </div>
 
@@ -176,7 +195,7 @@ const CATEGORIES = [
   ['Phone','#3E6B8E'],['Gas','#6B4E8E'],['Snacks & Drinks','#C96A3B'],
   ['Home Supplies','#5E7350'],['Personal Care','#B04A6E'],
   ['Car Maintenance','#2F8C8C'],['Subscriptions & Fun','#A03E8C'],
-  ['Clothing','#556B9E'],['Health','#C4453C'],['Other','#7A7F7A']
+  ['Clothing','#556B9E'],['Health','#C4453C'],['Stationery','#8A8E2F'],['Other','#7A7F7A']
 ];
 const catColor = n => (CATEGORIES.find(c=>c[0]===n)||CATEGORIES[CATEGORIES.length-1])[1];
 
@@ -428,7 +447,8 @@ document.addEventListener('click',ev=>{
 });
 document.addEventListener('keydown',ev=>{
   if(ev.key==='Escape'){
-    if(editId!==null){editId=null;render();}
+    if($('stapleOverlay').classList.contains('on')){$('stapleOverlay').classList.remove('on');}
+    else if(editId!==null){editId=null;render();}
     else if(filterCat){filterCat=null;render();}
     return;
   }
@@ -482,6 +502,57 @@ $('curSelect').addEventListener('change',ev=>{
   curCode=ev.target.value;
   localStorage.setItem('currency',curCode);
   render();
+});
+
+// ---------- staples ----------
+let staples=[];
+try{ staples=JSON.parse(localStorage.getItem('staples')||'[]'); }catch(e){}
+
+function renderStaples(){
+  $('stapleCur').textContent=curCode;
+  const box=$('stapleList');
+  if(!staples.length){
+    box.innerHTML='<div class="empty" style="padding:18px">No staples yet. Add the items you buy often — Eggs, Milk, Chicken…</div>';
+    return;
+  }
+  const thisMonth=todayISO().slice(0,7);
+  let html='';
+  for(const s of staples){
+    const hits=expenses.filter(e=>(e.currency||'CAD')===curCode && e.details.toLowerCase().includes(s.toLowerCase()));
+    const all=hits.reduce((t,e)=>t+e.amount,0);
+    const mo=hits.filter(e=>e.date.slice(0,7)===thisMonth).reduce((t,e)=>t+e.amount,0);
+    const avg=hits.length?all/hits.length:0;
+    html+=`<div class="row">
+      <div class="det"><b>${esc(s)}</b><small>${hits.length} purchase${hits.length===1?'':'s'}${hits.length?' · avg '+fmt(avg)+' · last '+dayLabel(hits[0].date):''}</small></div>
+      <div style="text-align:right"><div class="amt">${fmt(all)}</div><small style="font-size:11px;color:var(--muted2)">${fmt(mo)} this month</small></div>
+      <button class="del" data-unstaple="${esc(s)}" title="Remove" aria-label="Remove ${esc(s)}">✕</button>
+    </div>`;
+  }
+  box.innerHTML=html;
+}
+function addStaple(){
+  const v=$('stapleInput').value.trim();
+  if(!v)return;
+  if(!staples.some(s=>s.toLowerCase()===v.toLowerCase())){
+    staples.push(v);
+    staples.sort((a,b)=>a.localeCompare(b));
+    localStorage.setItem('staples',JSON.stringify(staples));
+  }
+  $('stapleInput').value='';
+  renderStaples();
+  $('stapleInput').focus();
+}
+$('staplesBtn').addEventListener('click',()=>{$('stapleOverlay').classList.add('on');renderStaples();$('stapleInput').focus();});
+$('stapleClose').addEventListener('click',()=>$('stapleOverlay').classList.remove('on'));
+$('stapleOverlay').addEventListener('click',ev=>{if(ev.target.id==='stapleOverlay')$('stapleOverlay').classList.remove('on');});
+$('stapleAdd').addEventListener('click',addStaple);
+$('stapleInput').addEventListener('keydown',ev=>{if(ev.key==='Enter')addStaple();});
+$('stapleList').addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-unstaple]');
+  if(!t)return;
+  staples=staples.filter(s=>s!==t.dataset.unstaple);
+  localStorage.setItem('staples',JSON.stringify(staples));
+  renderStaples();
 });
 
 // ---------- init ----------
